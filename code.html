@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Exam Pacing & Analytics Tool v13</title>
+    
+    <!-- Self-contained SVG Favicon for a professional touch -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏱️</text></svg>">
+
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <!-- Chart.js and the Annotation Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
+    <style>
+        /* --- General & Layout --- */
+        .screen {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Question Navigator Grid --- */
+        #question-grid {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+        }
+        .q-btn {
+            aspect-ratio: 1 / 1;
+            padding: 0;
+        }
+        .q-btn.current {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+        
+        /* --- NEW: Pause & Confirmation Overlay Styles --- */
+        #pause-overlay, #confirmation-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(5px);
+            z-index: 1050; /* Above most content */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+            padding: 1rem; /* Good for small screens */
+        }
+        #confirmation-modal {
+            z-index: 1060; /* Higher than pause overlay */
+        }
+
+        /* --- Reusable Container Styles (Moved from inline) --- */
+        .progress-container {
+            max-width: 400px;
+            height: 12px;
+        }
+        .answer-options-container {
+            max-width: 500px;
+        }
+        .scrollable-container {
+            overflow-y: auto;
+        }
+        .question-grid-container {
+            max-height: 210px;
+        }
+        .grading-list-container {
+            max-height: 60vh;
+        }
+        .chart-container {
+            position: relative;
+            min-height: 250px;
+        }
+
+        /* --- Accessibility for Sortable Table Headers --- */
+        .btn-sort {
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            color: inherit;
+            font-weight: inherit;
+            text-decoration: none;
+            text-align: left;
+        }
+        .btn-sort:hover {
+            text-decoration: underline;
+        }
+
+        /* --- Collapsible Card Styles --- */
+        .card-header .btn-collapse {
+            text-decoration: none;
+            color: inherit;
+            text-align: left;
+            padding: 0;
+            background: none;
+            border: none;
+        }
+        .collapse-icon {
+            transition: transform 0.2s ease-in-out;
+            width: 1.25em;
+            height: 1.25em;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%236c757d'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-size: 1.25em;
+        }
+        .card-header .btn-collapse[aria-expanded="false"] .collapse-icon {
+            transform: rotate(-90deg);
+        }
+        [data-bs-theme="dark"] .collapse-icon {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23adb5bd'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+        }
+    </style>
+</head>
+<body class="bg-body-secondary">
+
+    <!-- Pause Overlay -->
+    <div id="pause-overlay" class="d-none">
+        <div class="card text-center shadow-lg">
+            <div class="card-body p-4 p-md-5">
+                <h2 class="card-title h3 mb-3">Exam Paused</h2>
+                <p class="card-text text-body-secondary mb-4">Your time is stopped. Click below to continue.</p>
+                <button id="resume-paused-btn" class="btn btn-primary btn-lg">Resume Exam</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- NEW: Custom Confirmation Modal -->
+    <div id="confirmation-modal" class="d-none">
+        <div class="card text-center shadow-lg" style="max-width: 400px;">
+            <div class="card-body p-4 p-md-5">
+                <h2 id="confirm-title" class="card-title h4 mb-3">Confirmation</h2>
+                <p id="confirm-message" class="card-text text-body-secondary mb-4">Are you sure?</p>
+                <div class="d-flex justify-content-center gap-3">
+                    <button id="confirm-cancel-btn" class="btn btn-secondary w-100">Cancel</button>
+                    <button id="confirm-action-btn" class="btn btn-danger w-100">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <main class="container my-3 my-md-4">
+        <div class="card shadow-sm border-light-subtle rounded-4 overflow-hidden">
+            
+            <!-- =========== SETUP SCREEN =========== -->
+            <section id="setup-screen" class="screen p-3 p-sm-4 p-lg-5">
+                <header>
+                    <h1 class="display-6 display-md-5 fw-bold">Exam Pacing Tool</h1>
+                    <p class="text-body-secondary mb-4">Configure your exam, track your time, and analyze your performance.</p>
+                </header>
+                
+                <div id="resume-prompt" class="alert alert-info d-none">
+                    <p class="fw-bold mb-2">Welcome Back!</p>
+                    <p class="mb-2">It looks like you have an exam session in progress. Would you like to resume?</p>
+                    <button id="resume-btn" class="btn btn-primary me-2">Yes, Resume Exam</button>
+                    <button id="discard-btn" class="btn btn-outline-secondary">No, Start New</button>
+                </div>
+
+                <form id="setup-form">
+                    <div class="mb-3">
+                        <label for="total-questions" class="form-label">Total Number of Questions</label>
+                        <input type="number" class="form-control" id="total-questions" value="50" required min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label for="total-time" class="form-label">Total Time (in minutes)</label>
+                        <input type="number" class="form-control" id="total-time" value="60" required min="1">
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col">
+                            <label for="positive-marking" class="form-label">Marks for Correct Answer</label>
+                            <input type="number" class="form-control" id="positive-marking" value="4" required step="any">
+                        </div>
+                        <div class="col">
+                            <label for="negative-marking" class="form-label">Marks Deducted (+ve value)</label>
+                            <input type="number" class="form-control" id="negative-marking" value="1" required min="0" step="any">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="answer-key" class="form-label">Answer Key (Optional)</label>
+                        <input type="text" class="form-control" id="answer-key" placeholder="e.g., a,d,b,c,a,...">
+                        <div class="form-text">For automatic grading, enter correct answers separated by commas.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Start Exam Simulation</button>
+                </form>
+            </section>
+
+            <!-- =========== EXAM SCREEN =========== -->
+            <section id="exam-screen" class="screen d-none p-3 p-sm-4 p-lg-5">
+                <!-- Collapsible Pacing Card -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePacing" aria-expanded="true" aria-controls="collapsePacing">
+                            <h3 class="h5 mb-0">Pacing & Timer</h3>
+                            <span class="collapse-icon"></span>
+                        </button>
+                    </div>
+                    <div class="collapse show" id="collapsePacing">
+                        <div class="card-body">
+                            <div id="master-timer-container" class="text-center">
+                                <div id="master-timer" class="display-5 display-md-4 font-monospace fw-bold" aria-live="polite">00:00:00</div>
+                                <div class="progress mx-auto mt-2 progress-container" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+                                    <div id="pacing-bar-inner" class="progress-bar rounded-pill bg-success" style="width: 100%;"></div>
+                                </div>
+                            </div>
+                            <div id="pacing-indicators" class="row border-top pt-3 mt-3 g-3">
+                                <div class="col-6 col-md-3 text-center">
+                                    <span class="small text-body-secondary text-uppercase">Required Pace</span>
+                                    <span id="required-pace" class="d-block h4 font-monospace fw-semibold">--:-- / q</span>
+                                </div>
+                                <div class="col-6 col-md-3 text-center">
+                                    <span class="small text-body-secondary text-uppercase">Your Pace</span>
+                                    <span id="current-pace" class="d-block h4 font-monospace fw-semibold">--:-- / q</span>
+                                </div>
+                                <div class="col-6 col-md-3 text-center">
+                                    <span class="small text-body-secondary text-uppercase">Time Bank</span>
+                                    <span id="time-bank" class="d-block h4 font-monospace fw-semibold" aria-live="polite">--:--</span>
+                                </div>
+                                <div class="col-6 col-md-3 text-center">
+                                    <span class="small text-body-secondary text-uppercase">Marked</span>
+                                    <span id="marked-counter" class="d-block h4 font-monospace fw-semibold" aria-live="polite">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Collapsible Current Question Card -->
+                <div id="current-question-panel" class="card text-center mb-4">
+                    <div class="card-header">
+                         <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseQuestionPanel" aria-expanded="true" aria-controls="collapseQuestionPanel">
+                            <h2 id="current-q-number" class="h4 mb-0">Question 1</h2>
+                            <span class="collapse-icon"></span>
+                        </button>
+                    </div>
+                    <div class="collapse show" id="collapseQuestionPanel">
+                        <div class="card-body p-4">
+                            <div id="current-q-timer" class="display-6 display-md-5 font-monospace fw-bold mb-4" aria-live="polite">00:00</div>
+                            <div id="answer-options" class="d-grid gap-2 mx-auto answer-options-container">
+                                <button class="btn btn-outline-secondary" data-answer="a">A</button>
+                                <button class="btn btn-outline-secondary" data-answer="b">B</button>
+                                <button class="btn btn-outline-secondary" data-answer="c">C</button>
+                                <button class="btn btn-outline-secondary" data-answer="d">D</button>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-transparent p-3">
+                            <div id="navigation-controls" class="d-flex flex-column flex-sm-row gap-2">
+                                <button id="prev-btn" class="btn btn-secondary flex-fill" disabled>« Previous</button>
+                                <button id="mark-review-btn" class="btn btn-outline-secondary flex-fill">Mark for Review</button>
+                                <button id="next-btn" class="btn btn-primary flex-fill">Next »</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Collapsible Navigator Card -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNavigator" aria-expanded="true" aria-controls="collapseNavigator">
+                            <h3 class="h4 mb-0">Question Navigator</h3>
+                            <span class="collapse-icon"></span>
+                        </button>
+                    </div>
+                    <div class="collapse show" id="collapseNavigator">
+                        <div class="card-body p-3">
+                            <div class="scrollable-container question-grid-container">
+                                <div id="question-grid"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Action Buttons Group -->
+                <div class="d-grid gap-2 d-sm-flex justify-content-end">
+                    <button id="pause-btn" class="btn btn-outline-primary">Pause Exam</button>
+                    <button id="finish-btn" class="btn btn-danger">Finish & Grade Exam</button>
+                </div>
+            </section>
+
+            <!-- =========== GRADING SCREEN =========== -->
+            <section id="grading-screen" class="screen d-none p-3 p-sm-4 p-lg-5">
+                <h1 class="display-6 fw-bold">Answer Key Entry</h1>
+                <p class="text-body-secondary mb-4">The exam is over. For each question you attempted, please enter the correct answer to generate your performance report.</p>
+                <div id="grading-list" class="list-group list-group-flush border rounded-3 scrollable-container grading-list-container"></div>
+                <button id="generate-analytics-btn" class="btn btn-primary w-100 mt-4" disabled>Generate Analytics Report</button>
+            </section>
+
+            <!-- =========== ANALYTICS SCREEN =========== -->
+            <section id="analytics-screen" class="screen d-none p-3 p-sm-4 p-lg-5">
+                <h1 class="display-6 fw-bold mb-4">Performance Analytics Report</h1>
+                <div class="row g-3 g-lg-4 mb-4">
+                    <div class="col-12 col-md-6">
+                        <!-- Collapsible Summary Card -->
+                        <div class="card h-100">
+                             <div class="card-header">
+                                <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSummary" aria-expanded="true" aria-controls="collapseSummary">
+                                    <h3 class="h5 mb-0">Overall Summary</h3>
+                                    <span class="collapse-icon"></span>
+                                </button>
+                            </div>
+                            <div class="collapse show" id="collapseSummary">
+                                <div class="card-body d-flex flex-column">
+                                    <p id="summary-score" class="card-text"></p>
+                                    <div class="chart-container flex-grow-1">
+                                        <canvas id="score-chart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <!-- Collapsible Pacing Card -->
+                        <div class="card h-100">
+                             <div class="card-header">
+                                <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePacingAnalysis" aria-expanded="true" aria-controls="collapsePacingAnalysis">
+                                    <h3 class="h5 mb-0">Pacing Analysis</h3>
+                                    <span class="collapse-icon"></span>
+                                </button>
+                            </div>
+                            <div class="collapse show" id="collapsePacingAnalysis">
+                                <div class="card-body d-flex flex-column">
+                                    <p id="efficiency-analysis" class="card-text"></p>
+                                    <div class="chart-container flex-grow-1">
+                                        <canvas id="pace-chart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <!-- Collapsible Results Table Card -->
+                        <div class="card">
+                             <div class="card-header">
+                                <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDetailedResults" aria-expanded="true" aria-controls="collapseDetailedResults">
+                                    <h3 class="h5 mb-0">Detailed Results</h3>
+                                    <span class="collapse-icon"></span>
+                                </button>
+                            </div>
+                            <div class="collapse show" id="collapseDetailedResults">
+                                <div class="card-body">
+                                    <p class="card-text text-body-secondary">Click on table headers to sort. On smaller screens, this table may scroll horizontally. Questions you marked for review are highlighted.</p>
+                                    <div class="table-responsive">
+                                        <table id="detailed-results-table" class="table table-hover align-middle">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th><button class="btn-sort" data-sort="id">Q#</button></th>
+                                                    <th><button class="btn-sort" data-sort="selectedAnswer">Your Ans</button></th>
+                                                    <th><button class="btn-sort" data-sort="correctAnswer">Correct Ans</button></th>
+                                                    <th><button class="btn-sort" data-sort="timeSpent">Time Spent</button></th>
+                                                    <th><button class="btn-sort" data-sort="outcome">Outcome</button></th>
+                                                    <th><button class="btn-sort" data-sort="markedForReview">Marked</button></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="detailed-results-tbody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button id="start-new-btn" class="btn btn-primary w-100 mt-2">Start New Exam</button>
+            </section>
+        </div>
+    </main>
+    
+    <!-- Bootstrap 5.3 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script>
+    // --- IIFE to prevent global scope pollution ---
+    (function() {
+        // --- DOM Element Selection ---
+        const screens = { setup: document.getElementById('setup-screen'), exam: document.getElementById('exam-screen'), grading: document.getElementById('grading-screen'), analytics: document.getElementById('analytics-screen') };
+        const setupForm = document.getElementById('setup-form');
+        const totalQuestionsInput = document.getElementById('total-questions');
+        const totalTimeInput = document.getElementById('total-time');
+        const positiveMarkingInput = document.getElementById('positive-marking');
+        const negativeMarkingInput = document.getElementById('negative-marking');
+        const answerKeyInput = document.getElementById('answer-key');
+        const masterTimerEl = document.getElementById('master-timer');
+        const requiredPaceEl = document.getElementById('required-pace');
+        const currentPaceEl = document.getElementById('current-pace');
+        const timeBankEl = document.getElementById('time-bank');
+        const markedCounterEl = document.getElementById('marked-counter');
+        const pacingBarInnerEl = document.getElementById('pacing-bar-inner');
+        const questionGridEl = document.getElementById('question-grid');
+        const currentQNumberEl = document.getElementById('current-q-number');
+        const currentQTimerEl = document.getElementById('current-q-timer');
+        const answerOptionButtons = document.querySelectorAll('#answer-options button');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const markReviewBtn = document.getElementById('mark-review-btn');
+        const finishBtn = document.getElementById('finish-btn');
+        const gradingListEl = document.getElementById('grading-list');
+        const generateAnalyticsBtn = document.getElementById('generate-analytics-btn');
+        const detailedResultsTbody = document.getElementById('detailed-results-tbody');
+        const resumePromptEl = document.getElementById('resume-prompt');
+        const resumeBtn = document.getElementById('resume-btn');
+        const discardBtn = document.getElementById('discard-btn');
+        const startNewBtn = document.getElementById('start-new-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const pauseOverlayEl = document.getElementById('pause-overlay');
+        const resumePausedBtn = document.getElementById('resume-paused-btn');
+        // --- NEW: Confirmation Modal Elements ---
+        const confirmationModalEl = document.getElementById('confirmation-modal');
+        const confirmTitleEl = document.getElementById('confirm-title');
+        const confirmMessageEl = document.getElementById('confirm-message');
+        const confirmActionBtn = document.getElementById('confirm-action-btn');
+        const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+
+
+        // --- Centralized constants ---
+        const CONSTANTS = {
+            LOCAL_STORAGE_KEY: 'examPacingToolState_v2',
+            STATUS_UNSEEN: 'unseen',
+            STATUS_SEEN: 'seen',
+            OUTCOME_CORRECT: 'correct',
+            OUTCOME_INCORRECT: 'incorrect',
+            OUTCOME_UNATTEMPTED: 'unattempted',
+        };
+
+        // --- State & Config Objects ---
+        const config = {
+            totalQuestions: 0, totalTimeSeconds: 0, positiveMarking: 0, negativeMarking: 0,
+            requiredPaceSeconds: 0, answerKey: [],
+        };
+        
+        const getInitialState = () => ({
+            examData: [], currentQuestionIndex: 0, markedCount: 0, examStartTime: null,
+            questionStartTime: null, timers: { master: null, pacing: null, question: null },
+            sortState: { key: 'id', direction: 'asc' }, charts: {},
+            isPaused: false, pauseStartTime: null,
+        });
+        
+        let state = getInitialState();
+
+        // --- Utility Functions ---
+        const switchScreen = (screenName) => {
+            Object.values(screens).forEach(s => s.classList.add('d-none'));
+            if (screens[screenName]) screens[screenName].classList.remove('d-none');
+            document.removeEventListener('keydown', handleKeyPress);
+            if (screenName === 'exam') document.addEventListener('keydown', handleKeyPress);
+        };
+
+        const formatTime = (seconds, showHours = false) => {
+            if (isNaN(seconds) || seconds === null) return showHours ? "00:00:00" : "--:--";
+            const isNegative = seconds < 0;
+            if (isNegative) seconds = -seconds;
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            let timeString = (showHours || h > 0)
+                ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+                : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            return isNegative ? `-${timeString}` : timeString;
+        };
+        
+        const clearAllTimers = () => {
+            Object.values(state.timers).forEach(timerId => clearInterval(timerId));
+            state.timers = { master: null, pacing: null, question: null };
+        };
+
+        // --- NEW: Custom Confirmation Modal ---
+        const showConfirmation = (config) => {
+            const {
+                title = 'Confirmation',
+                message = 'Are you sure?',
+                onConfirm,
+                confirmText = 'Confirm',
+                cancelText = 'Cancel',
+                confirmClass = 'btn-danger'
+            } = config;
+
+            confirmTitleEl.textContent = title;
+            confirmMessageEl.textContent = message;
+            confirmActionBtn.textContent = confirmText;
+            confirmCancelBtn.textContent = cancelText;
+
+            confirmActionBtn.className = 'btn w-100'; // Reset classes but keep w-100
+            confirmActionBtn.classList.add(confirmClass);
+            
+            confirmationModalEl.classList.remove('d-none');
+            
+            const hideModal = () => confirmationModalEl.classList.add('d-none');
+
+            // Use { once: true } to automatically remove listeners after one click
+            const handleConfirm = () => {
+                hideModal();
+                onConfirm();
+            };
+            const handleCancel = () => {
+                hideModal();
+            };
+            
+            confirmActionBtn.addEventListener('click', handleConfirm, { once: true });
+            confirmCancelBtn.addEventListener('click', handleCancel, { once: true });
+        };
+
+        // --- State Persistence Logic ---
+        const saveStateToLocalStorage = () => {
+            try {
+                const stateToSave = {
+                    config, state: {
+                        examData: state.examData, currentQuestionIndex: state.currentQuestionIndex,
+                        examStartTime: state.examStartTime, markedCount: state.markedCount,
+                        isPaused: state.isPaused, pauseStartTime: state.pauseStartTime,
+                    }
+                };
+                localStorage.setItem(CONSTANTS.LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
+            } catch (e) { console.error("Could not save state to localStorage", e); }
+        };
+
+        const loadStateFromLocalStorage = () => {
+            try {
+                const savedStateJSON = localStorage.getItem(CONSTANTS.LOCAL_STORAGE_KEY);
+                if (!savedStateJSON) return false;
+                const saved = JSON.parse(savedStateJSON);
+
+                let timeElapsed = (Date.now() - saved.state.examStartTime) / 1000;
+                if (saved.state.isPaused && saved.state.pauseStartTime) {
+                    timeElapsed = (saved.state.pauseStartTime - saved.state.examStartTime) / 1000;
+                }
+                
+                if (saved.state.examStartTime && timeElapsed < saved.config.totalTimeSeconds) {
+                    return saved;
+                }
+            } catch (e) { console.error("Could not load state from localStorage", e); }
+            clearStateFromLocalStorage();
+            return false;
+        };
+
+        const clearStateFromLocalStorage = () => localStorage.removeItem(CONSTANTS.LOCAL_STORAGE_KEY);
+
+        const handleResume = (savedState) => {
+            Object.assign(config, savedState.config);
+            Object.assign(state, { ...getInitialState(), ...savedState.state });
+
+            if (state.isPaused) {
+                pauseOverlayEl.classList.remove('d-none');
+                switchScreen('exam');
+                updateMasterTimer(); 
+                updatePacingIndicators();
+                updatePerQuestionTimer();
+            } else {
+                startOrResumeExam();
+            }
+        };
+        
+        // --- Pause/Resume Logic ---
+        function pauseExam() {
+            if (state.isPaused) return;
+            state.isPaused = true;
+            state.pauseStartTime = Date.now();
+            clearAllTimers();
+            pauseOverlayEl.classList.remove('d-none');
+            saveStateToLocalStorage();
+        }
+
+        function resumeFromPause() {
+            if (!state.isPaused) return;
+            const pauseDuration = Date.now() - state.pauseStartTime;
+            state.examStartTime += pauseDuration;
+            state.questionStartTime += pauseDuration;
+            state.isPaused = false;
+            state.pauseStartTime = null;
+            pauseOverlayEl.classList.add('d-none');
+            restartTimers();
+            saveStateToLocalStorage();
+        }
+        
+        function restartTimers() {
+            clearAllTimers();
+            state.timers.master = setInterval(updateMasterTimer, 1000);
+            state.timers.pacing = setInterval(updatePacingIndicators, 1000);
+            state.timers.question = setInterval(updatePerQuestionTimer, 1000);
+        }
+
+        // --- Exam Logic ---
+        function startNewExam() {
+            config.totalQuestions = parseInt(totalQuestionsInput.value);
+            config.totalTimeSeconds = parseInt(totalTimeInput.value) * 60;
+            config.positiveMarking = parseFloat(positiveMarkingInput.value);
+            config.negativeMarking = parseFloat(negativeMarkingInput.value);
+            config.requiredPaceSeconds = config.totalTimeSeconds / config.totalQuestions;
+            config.answerKey = answerKeyInput.value ? answerKeyInput.value.split(',').map(a => a.trim().toLowerCase()) : [];
+            
+            state = getInitialState();
+            state.examData = Array.from({ length: config.totalQuestions }, (_, i) => ({
+                id: i + 1, timeSpent: 0, markedForReview: false, status: CONSTANTS.STATUS_UNSEEN,
+                outcome: null, selectedAnswer: null,
+                correctAnswer: config.answerKey[i] || null,
+            }));
+            state.examStartTime = Date.now();
+            
+            startOrResumeExam();
+            navigateToQuestion(0);
+        }
+
+        function startOrResumeExam() {
+            requiredPaceEl.textContent = `${formatTime(config.requiredPaceSeconds)} / q`;
+            markedCounterEl.textContent = state.markedCount;
+            renderQuestionGrid();
+            restartTimers();
+            switchScreen('exam');
+            if (state.currentQuestionIndex > 0) {
+                navigateToQuestion(state.currentQuestionIndex, true);
+            }
+        }
+        
+        const updateMasterTimer = () => {
+            const elapsed = (Date.now() - state.examStartTime) / 1000;
+            const remaining = config.totalTimeSeconds - elapsed;
+            masterTimerEl.classList.remove('text-danger', 'text-warning');
+            if (remaining <= 0) {
+                masterTimerEl.textContent = "00:00:00";
+                masterTimerEl.classList.add('text-danger');
+                endExam(true);
+            } else {
+                masterTimerEl.textContent = formatTime(remaining, true);
+                if (remaining < 60) masterTimerEl.classList.add('text-danger');
+                else if (remaining < 300) masterTimerEl.classList.add('text-warning');
+            }
+        };
+
+        const updatePacingIndicators = () => {
+            const questionsSeen = state.examData.filter(q => q.status !== CONSTANTS.STATUS_UNSEEN).length || 1;
+            const timeElapsed = (Date.now() - state.examStartTime) / 1000;
+            const currentPace = timeElapsed / questionsSeen;
+            currentPaceEl.textContent = `${formatTime(currentPace)} / q`;
+            const paceRatio = config.requiredPaceSeconds / currentPace;
+            pacingBarInnerEl.className = 'progress-bar rounded-pill';
+            if (paceRatio > 1.1) pacingBarInnerEl.classList.add('bg-success');
+            else if (paceRatio >= 0.9) pacingBarInnerEl.classList.add('bg-warning');
+            else pacingBarInnerEl.classList.add('bg-danger');
+            const requiredTimeForProgress = config.requiredPaceSeconds * (state.currentQuestionIndex + 1);
+            const timeBankSeconds = requiredTimeForProgress - timeElapsed;
+            timeBankEl.textContent = (timeBankSeconds >= 0 ? '+' : '') + formatTime(timeBankSeconds);
+            timeBankEl.classList.toggle('text-success', timeBankSeconds >= 0);
+            timeBankEl.classList.toggle('text-danger', timeBankSeconds < 0);
+        };
+
+        const updatePerQuestionTimer = () => {
+            if (!state.questionStartTime) {
+                currentQTimerEl.textContent = formatTime(state.examData[state.currentQuestionIndex].timeSpent);
+                return;
+            }
+            const elapsed = (Date.now() - state.questionStartTime) / 1000;
+            currentQTimerEl.textContent = formatTime(elapsed);
+        };
+
+        function renderQuestionGrid() {
+            questionGridEl.innerHTML = '';
+            const statusClasses = {
+                [CONSTANTS.STATUS_SEEN]: 'btn-outline-primary',
+                [CONSTANTS.STATUS_UNSEEN]: 'btn-light',
+            };
+            state.examData.forEach((q, index) => {
+                const btn = document.createElement('button');
+                btn.className = `btn q-btn fw-bold ${statusClasses[q.status]}`;
+                btn.textContent = q.id;
+                if (index === state.currentQuestionIndex) {
+                    btn.classList.add('btn-primary', 'current', 'shadow-lg');
+                    btn.classList.remove('btn-outline-primary', 'btn-light');
+                }
+                if (q.markedForReview) btn.classList.add('border', 'border-3', 'border-warning');
+                btn.onclick = () => navigateToQuestion(index);
+                questionGridEl.appendChild(btn);
+            });
+        }
+
+        function navigateToQuestion(index, isResuming = false) {
+            if (index < 0 || index >= config.totalQuestions) return;
+            const timeNow = Date.now();
+            if (state.questionStartTime && !isResuming) {
+                state.examData[state.currentQuestionIndex].timeSpent += (timeNow - state.questionStartTime) / 1000;
+            }
+            clearInterval(state.timers.question);
+            state.currentQuestionIndex = index;
+            if (state.examData[index].status === CONSTANTS.STATUS_UNSEEN) {
+                state.examData[index].status = CONSTANTS.STATUS_SEEN;
+            }
+            state.questionStartTime = timeNow;
+            state.timers.question = setInterval(updatePerQuestionTimer, 1000);
+            updatePerQuestionTimer();
+            renderQuestionGrid();
+            updateNavControls();
+            updateAnswerButtonsUI();
+            saveStateToLocalStorage();
+        }
+
+        function updateNavControls() {
+            currentQNumberEl.textContent = `Question ${state.currentQuestionIndex + 1}`;
+            prevBtn.disabled = state.currentQuestionIndex === 0;
+            nextBtn.disabled = state.currentQuestionIndex === config.totalQuestions - 1;
+            const currentQuestion = state.examData[state.currentQuestionIndex];
+            markReviewBtn.textContent = currentQuestion.markedForReview ? 'Unmark' : 'Mark for Review';
+            markReviewBtn.classList.toggle('btn-warning', currentQuestion.markedForReview);
+            markReviewBtn.classList.toggle('btn-outline-secondary', !currentQuestion.markedForReview);
+        }
+
+        function selectAnswer(answer) {
+            const currentQ = state.examData[state.currentQuestionIndex];
+            currentQ.selectedAnswer = (currentQ.selectedAnswer === answer) ? null : answer;
+            updateAnswerButtonsUI();
+            saveStateToLocalStorage();
+        }
+
+        function updateAnswerButtonsUI() {
+            const currentAnswer = state.examData[state.currentQuestionIndex].selectedAnswer;
+            answerOptionButtons.forEach(btn => {
+                const isSelected = btn.dataset.answer === currentAnswer;
+                btn.classList.toggle('btn-primary', isSelected);
+                btn.classList.toggle('btn-outline-secondary', !isSelected);
+            });
+        }
+
+        const handleKeyPress = (e) => {
+            if (state.isPaused) return;
+            if (document.activeElement.tagName === 'INPUT' || e.ctrlKey || e.metaKey) return;
+            switch (e.key.toLowerCase()) {
+                case 'arrowright': if (!nextBtn.disabled) nextBtn.click(); break;
+                case 'arrowleft': if (!prevBtn.disabled) prevBtn.click(); break;
+                case 'm': markReviewBtn.click(); break;
+                case 'a': case 'b': case 'c': case 'd': selectAnswer(e.key.toLowerCase()); break;
+            }
+        };
+
+        function endExam(wasTimeout) {
+            if (wasTimeout) {
+                alert("Time's up! The exam has ended automatically.");
+            }
+            clearAllTimers();
+            if (state.questionStartTime) {
+                state.examData[state.currentQuestionIndex].timeSpent += (Date.now() - state.questionStartTime) / 1000;
+            }
+            clearStateFromLocalStorage();
+            const allAttemptedHaveKey = state.examData
+                .filter(q => q.status !== CONSTANTS.STATUS_UNSEEN && q.selectedAnswer !== null)
+                .every(q => q.correctAnswer !== null);
+
+            if (allAttemptedHaveKey) {
+                generateAndShowAnalytics();
+                switchScreen('analytics');
+            } else {
+                renderGradingScreen();
+                switchScreen('grading');
+            }
+        }
+
+        // --- Grading Logic ---
+        function renderGradingScreen() {
+            gradingListEl.innerHTML = '';
+            state.examData.forEach((q, index) => {
+                const item = document.createElement('div');
+                item.className = 'list-group-item d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2';
+                
+                if (q.status === CONSTANTS.STATUS_UNSEEN || q.selectedAnswer === null) {
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'd-flex align-items-center gap-3';
+                    infoDiv.innerHTML = `<span>Question ${q.id}</span> <strong class="text-body-secondary">Unattempted</strong>`;
+                    item.appendChild(infoDiv);
+                } else {
+                    const infoDiv = document.createElement('div');
+                    infoDiv.className = 'd-flex align-items-center flex-wrap gap-3';
+                    infoDiv.innerHTML = `<span class="fw-bold">Q ${q.id}</span> <span>Your Ans: <strong>${q.selectedAnswer.toUpperCase()}</strong></span> <span class="text-body-secondary small">(Time: ${formatTime(q.timeSpent)})</span>`;
+                    
+                    const actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'actions d-flex align-items-center gap-2 mt-2 mt-sm-0';
+                    actionsDiv.innerHTML = `<span class="me-2">Correct:</span>`;
+
+                    const btnGroup = document.createElement('div');
+                    btnGroup.className = 'btn-group';
+                    btnGroup.setAttribute('role', 'group');
+
+                    ['a', 'b', 'c', 'd'].forEach(ans => {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn btn-sm btn-outline-secondary';
+                        btn.dataset.answer = ans;
+                        btn.dataset.index = index;
+                        btn.textContent = ans.toUpperCase();
+                        btnGroup.appendChild(btn);
+                    });
+
+                    actionsDiv.appendChild(btnGroup);
+                    item.appendChild(infoDiv);
+                    item.appendChild(actionsDiv);
+                }
+                gradingListEl.appendChild(item);
+            });
+            checkGradingCompletion();
+        }
+        function handleGradingClick(e) {
+            const button = e.target.closest('button[data-answer]');
+            if (!button) return;
+            const index = parseInt(button.dataset.index);
+            const answer = button.dataset.answer;
+            state.examData[index].correctAnswer = answer;
+            const buttonGroup = button.parentElement;
+            buttonGroup.querySelectorAll('.btn').forEach(b => b.classList.replace('btn-primary', 'btn-outline-secondary'));
+            button.classList.replace('btn-outline-secondary', 'btn-primary');
+            checkGradingCompletion();
+        }
+        function checkGradingCompletion() {
+            const attemptedQuestions = state.examData.filter(q => q.status !== CONSTANTS.STATUS_UNSEEN && q.selectedAnswer !== null);
+            const allAttemptedGraded = attemptedQuestions.every(q => q.correctAnswer !== null);
+            generateAnalyticsBtn.disabled = !(allAttemptedGraded && attemptedQuestions.length > 0);
+        }
+
+        // --- Analytics Logic ---
+        function destroyCharts() {
+            Object.values(state.charts).forEach(chart => { if (chart instanceof Chart) chart.destroy(); });
+            state.charts = {};
+        }
+        function generateAndShowAnalytics() {
+            destroyCharts();
+            state.examData.forEach(q => {
+                if (q.selectedAnswer !== null) {
+                    q.outcome = q.selectedAnswer === q.correctAnswer ? CONSTANTS.OUTCOME_CORRECT : CONSTANTS.OUTCOME_INCORRECT;
+                } else { q.outcome = CONSTANTS.OUTCOME_UNATTEMPTED; }
+            });
+            const correctQs = state.examData.filter(q => q.outcome === CONSTANTS.OUTCOME_CORRECT);
+            const incorrectQs = state.examData.filter(q => q.outcome === CONSTANTS.OUTCOME_INCORRECT);
+            const attemptedQs = state.examData.filter(q => q.outcome !== CONSTANTS.OUTCOME_UNATTEMPTED);
+            
+            let totalScore = (correctQs.length * config.positiveMarking) - (incorrectQs.length * config.negativeMarking);
+            const maxScore = config.totalQuestions * config.positiveMarking;
+            const accuracy = attemptedQs.length > 0 ? (correctQs.length / attemptedQs.length) * 100 : 0;
+            document.getElementById('summary-score').innerHTML = `<strong>Final Score:</strong> ${totalScore.toFixed(2)} / ${maxScore.toFixed(2)} (<span class="${accuracy >= 50 ? 'text-success' : 'text-danger'}">${accuracy.toFixed(1)}% Accuracy</span>)`;
+            
+            const timeOnIncorrect = incorrectQs.reduce((s, q) => s + q.timeSpent, 0);
+            const totalTimeTaken = attemptedQs.reduce((sum, q) => sum + q.timeSpent, 0);
+            const timeOnIncorrectPercentage = totalTimeTaken > 0 ? (timeOnIncorrect / totalTimeTaken) * 100 : 0;
+            document.getElementById('efficiency-analysis').innerHTML = `You spent <strong>${formatTime(timeOnIncorrect)}</strong> (<span class="text-danger">${timeOnIncorrectPercentage.toFixed(1)}%</span> of your time) on questions you answered incorrectly.`;
+            
+            renderScoreDonutChart(correctQs, incorrectQs, attemptedQs);
+            renderPaceBarChart(correctQs, incorrectQs);
+            renderDetailedTable();
+        }
+        function getBsColor(colorName) { return getComputedStyle(document.documentElement).getPropertyValue(`--bs-${colorName}`).trim(); }
+        function renderScoreDonutChart(correctQs, incorrectQs, attemptedQs) {
+            const ctx = document.getElementById('score-chart').getContext('2d');
+            const unattemptedCount = config.totalQuestions - attemptedQs.length;
+            state.charts.score = new Chart(ctx, {
+                type: 'doughnut', data: {
+                    labels: ['Correct', 'Incorrect', 'Unattempted'],
+                    datasets: [{
+                        data: [correctQs.length, incorrectQs.length, unattemptedCount],
+                        backgroundColor: [getBsColor('success'), getBsColor('danger'), getBsColor('light-subtle')],
+                        borderColor: getBsColor('body-bg'), borderWidth: 4, hoverOffset: 8
+                    }]
+                }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: getBsColor('body-color'), boxWidth: 12, padding: 20 } } } }
+            });
+        }
+        function renderPaceBarChart(correctQs, incorrectQs) {
+            const ctx = document.getElementById('pace-chart').getContext('2d');
+            const paceCorrect = correctQs.length > 0 ? correctQs.reduce((s, q) => s + q.timeSpent, 0) / correctQs.length : 0;
+            const paceIncorrect = incorrectQs.length > 0 ? incorrectQs.reduce((s, q) => s + q.timeSpent, 0) / incorrectQs.length : 0;
+            state.charts.pace = new Chart(ctx, {
+                type: 'bar', data: {
+                    labels: ['Pace on Correct Qs', 'Pace on Incorrect Qs'],
+                    datasets: [{
+                        label: 'Your Pace', data: [paceCorrect, paceIncorrect],
+                        backgroundColor: [getBsColor('success-bg-subtle'), getBsColor('danger-bg-subtle')],
+                        borderColor: [getBsColor('success'), getBsColor('danger')], borderWidth: 1.5
+                    }, {
+                        type: 'line', label: 'Required Pace', data: [config.requiredPaceSeconds, config.requiredPaceSeconds],
+                        borderColor: getBsColor('warning'), borderWidth: 3, pointRadius: 0, fill: false, borderDash: [5, 5]
+                    }]
+                }, options: { responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Time in Seconds', color: getBsColor('secondary-color') }, ticks: { color: getBsColor('secondary-color') } }, x: { ticks: { color: getBsColor('secondary-color') } } },
+                    plugins: { legend: { position: 'bottom', labels: { color: getBsColor('body-color'), boxWidth: 12, padding: 20 } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${formatTime(c.raw)}` } } }
+                }
+            });
+        }
+        function renderDetailedTable() {
+            detailedResultsTbody.innerHTML = '';
+            const sortedData = [...state.examData].sort((a, b) => {
+                const valA = a[state.sortState.key], valB = b[state.sortState.key];
+                let comparison = 0;
+                if (state.sortState.key === 'markedForReview') comparison = valA === valB ? 0 : valA ? -1 : 1;
+                else if (valA > valB) comparison = 1; else if (valA < valB) comparison = -1;
+                return state.sortState.direction === 'asc' ? comparison : comparison * -1;
+            });
+            
+            const outcomeColors = { [CONSTANTS.OUTCOME_CORRECT]: 'success', [CONSTANTS.OUTCOME_INCORRECT]: 'danger', [CONSTANTS.OUTCOME_UNATTEMPTED]: 'secondary' };
+            const fragment = document.createDocumentFragment();
+            sortedData.forEach(q => {
+                const row = fragment.appendChild(document.createElement('tr'));
+                if (q.markedForReview) row.classList.add('table-warning');
+                const userAnswer = q.selectedAnswer ? q.selectedAnswer.toUpperCase() : '-';
+                const correctAnswer = q.correctAnswer ? q.correctAnswer.toUpperCase() : '-';
+                row.innerHTML = `<td>${q.id}</td><td>${userAnswer}</td><td>${correctAnswer}</td><td>${q.outcome === CONSTANTS.OUTCOME_UNATTEMPTED ? '-' : formatTime(q.timeSpent)}</td><td><span class="badge rounded-pill text-bg-${outcomeColors[q.outcome]} text-capitalize">${q.outcome}</span></td><td>${q.markedForReview ? 'Yes' : 'No'}</td>`;
+            });
+            detailedResultsTbody.appendChild(fragment);
+
+            document.querySelectorAll('#detailed-results-table .btn-sort').forEach(btn => {
+                btn.textContent = btn.textContent.replace(' ▾', '').replace(' ▴', '');
+                if (btn.dataset.sort === state.sortState.key) {
+                    btn.textContent += state.sortState.direction === 'asc' ? ' ▾' : ' ▴';
+                }
+            });
+        }
+        function handleSortClick(e) {
+            const key = e.currentTarget.dataset.sort;
+            if (state.sortState.key === key) state.sortState.direction = state.sortState.direction === 'asc' ? 'desc' : 'asc';
+            else {
+                state.sortState.key = key;
+                state.sortState.direction = (key === 'id' || key.includes('Answer')) ? 'asc' : 'desc';
+            }
+            renderDetailedTable();
+        }
+        function resetAndShowSetup() {
+            destroyCharts();
+            state = getInitialState();
+            setupForm.reset();
+            setupForm.classList.remove('d-none');
+            resumePromptEl.classList.add('d-none');
+            switchScreen('setup');
+        }
+
+        // --- Event Listeners ---
+        setupForm.addEventListener('submit', (e) => { e.preventDefault(); startNewExam(); });
+        answerOptionButtons.forEach(btn => btn.onclick = () => selectAnswer(btn.dataset.answer));
+        prevBtn.onclick = () => navigateToQuestion(state.currentQuestionIndex - 1);
+        nextBtn.onclick = () => navigateToQuestion(state.currentQuestionIndex + 1);
+        markReviewBtn.onclick = () => {
+            const currentQuestion = state.examData[state.currentQuestionIndex];
+            currentQuestion.markedForReview = !currentQuestion.markedForReview;
+            state.markedCount += currentQuestion.markedForReview ? 1 : -1;
+            markedCounterEl.textContent = state.markedCount;
+            updateNavControls();
+            renderQuestionGrid();
+            saveStateToLocalStorage();
+        };
+        finishBtn.onclick = () => {
+            showConfirmation({
+                title: 'Finish Exam?',
+                message: 'Are you sure you want to finish and grade the exam? This cannot be undone.',
+                onConfirm: () => endExam(false),
+                confirmText: 'Finish & Grade',
+                confirmClass: 'btn-danger'
+            });
+        };
+        gradingListEl.addEventListener('click', handleGradingClick);
+        generateAnalyticsBtn.onclick = () => {
+            generateAndShowAnalytics();
+            switchScreen('analytics');
+        };
+        startNewBtn.onclick = () => {
+            showConfirmation({
+                title: 'Start New Exam?',
+                message: 'This will erase your current report. Are you sure you want to start a new exam?',
+                onConfirm: resetAndShowSetup,
+                confirmText: 'Start New',
+                confirmClass: 'btn-primary'
+            });
+        };
+        document.querySelectorAll('#detailed-results-table .btn-sort').forEach(th => th.addEventListener('click', handleSortClick));
+        pauseBtn.addEventListener('click', pauseExam);
+        resumePausedBtn.addEventListener('click', resumeFromPause);
+
+
+        // --- Initializer ---
+        function init() {
+            const savedState = loadStateFromLocalStorage();
+            if (savedState) {
+                setupForm.classList.add('d-none');
+                resumePromptEl.classList.remove('d-none');
+                resumeBtn.onclick = () => handleResume(savedState);
+                discardBtn.onclick = () => {
+                    clearStateFromLocalStorage();
+                    resumePromptEl.classList.add('d-none');
+                    setupForm.classList.remove('d-none');
+                };
+            }
+            switchScreen('setup');
+        }
+
+        init();
+    })();
+    </script>
+
+</body>
+</html>
