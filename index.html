@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Exam Pacing & Analytics Tool v13</title>
+    <title>Advanced Exam Pacing & Analytics Tool</title>
     
     <!-- Self-contained SVG Favicon for a professional touch -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏱️</text></svg>">
@@ -297,9 +297,52 @@
             <!-- =========== ANALYTICS SCREEN =========== -->
             <section id="analytics-screen" class="screen d-none p-3 p-sm-4 p-lg-5">
                 <h1 class="display-6 fw-bold mb-4">Performance Analytics Report</h1>
+                
                 <div class="row g-3 g-lg-4 mb-4">
+                    <!-- At a Glance Metrics Card -->
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMetrics" aria-expanded="true" aria-controls="collapseMetrics">
+                                    <h3 class="h5 mb-0">At a Glance</h3>
+                                    <span class="collapse-icon"></span>
+                                </button>
+                            </div>
+                            <div class="collapse show" id="collapseMetrics">
+                                <div class="card-body">
+                                    <div class="row text-center g-3">
+                                        <div class="col-6 col-sm-4 col-lg-2">
+                                            <div class="h2 fw-bold" id="stat-score">--</div>
+                                            <div class="text-body-secondary small">Final Score</div>
+                                        </div>
+                                        <div class="col-6 col-sm-4 col-lg-2">
+                                            <div class="h2 fw-bold" id="stat-accuracy">--%</div>
+                                            <div class="text-body-secondary small">Accuracy</div>
+                                        </div>
+                                        <div class="col-6 col-sm-4 col-lg-2">
+                                            <div class="h2 fw-bold font-monospace" id="stat-pace-correct">--:--</div>
+                                            <div class="text-body-secondary small">Pace (Correct)</div>
+                                        </div>
+                                        <div class="col-6 col-sm-4 col-lg-2">
+                                            <div class="h2 fw-bold font-monospace" id="stat-pace-incorrect">--:--</div>
+                                            <div class="text-body-secondary small">Pace (Incorrect)</div>
+                                        </div>
+                                        <div class="col-6 col-sm-4 col-lg-2">
+                                            <div class="h2 fw-bold" id="stat-answered">--/--</div>
+                                            <div class="text-body-secondary small">Attempted</div>
+                                        </div>
+                                        <div class="col-6 col-sm-4 col-lg-2">
+                                            <div class="h2 fw-bold text-danger" id="stat-time-sinks">--</div>
+                                            <div class="text-body-secondary small">Time Sinks</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="col-12 col-md-6">
-                        <!-- Collapsible Summary Card -->
+                        <!-- Overall Summary Card -->
                         <div class="card h-100">
                              <div class="card-header">
                                 <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSummary" aria-expanded="true" aria-controls="collapseSummary">
@@ -309,7 +352,6 @@
                             </div>
                             <div class="collapse show" id="collapseSummary">
                                 <div class="card-body d-flex flex-column">
-                                    <p id="summary-score" class="card-text"></p>
                                     <div class="chart-container flex-grow-1">
                                         <canvas id="score-chart"></canvas>
                                     </div>
@@ -318,26 +360,63 @@
                         </div>
                     </div>
                     <div class="col-12 col-md-6">
-                        <!-- Collapsible Pacing Card -->
+                        <!-- Pacing Scatter Plot Card -->
                         <div class="card h-100">
                              <div class="card-header">
                                 <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePacingAnalysis" aria-expanded="true" aria-controls="collapsePacingAnalysis">
-                                    <h3 class="h5 mb-0">Pacing Analysis</h3>
+                                    <h3 class="h5 mb-0">Pacing Analysis Scatter Plot</h3>
                                     <span class="collapse-icon"></span>
                                 </button>
                             </div>
                             <div class="collapse show" id="collapsePacingAnalysis">
                                 <div class="card-body d-flex flex-column">
-                                    <p id="efficiency-analysis" class="card-text"></p>
+                                    <p class="card-text text-body-secondary small">Each dot is a question. See where you were fast, slow, correct, or incorrect. The dashed line is your required pace.</p>
                                     <div class="chart-container flex-grow-1">
-                                        <canvas id="pace-chart"></canvas>
+                                        <canvas id="pace-scatter-chart"></canvas>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    <!-- Time Bank Trajectory Card -->
+                    <div class="col-12 col-md-6">
+                        <div class="card h-100">
+                             <div class="card-header">
+                                <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTimeBank" aria-expanded="true" aria-controls="collapseTimeBank">
+                                    <h3 class="h5 mb-0">Time Bank Trajectory</h3>
+                                    <span class="collapse-icon"></span>
+                                </button>
+                            </div>
+                            <div class="collapse show" id="collapseTimeBank">
+                                <div class="card-body d-flex flex-column">
+                                    <p class="card-text text-body-secondary small">This shows your time buffer. Above the line means you were ahead of schedule; below means you were behind.</p>
+                                    <div class="chart-container flex-grow-1">
+                                        <canvas id="time-bank-chart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     <!-- What If Scenario Card -->
+                    <div class="col-12 col-md-6">
+                        <div class="card h-100">
+                             <div class="card-header">
+                                <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseScenarios" aria-expanded="true" aria-controls="collapseScenarios">
+                                    <h3 class="h5 mb-0">Strategic Insights & Scenarios</h3>
+                                    <span class="collapse-icon"></span>
+                                </button>
+                            </div>
+                            <div class="collapse show" id="collapseScenarios">
+                                <div class="card-body">
+                                    <ul id="strategic-insights-list" class="list-unstyled mb-0">
+                                        <!-- Insights will be populated here by JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="col-12">
-                        <!-- Collapsible Results Table Card -->
+                        <!-- Detailed Results Table Card -->
                         <div class="card">
                              <div class="card-header">
                                 <button class="btn-collapse w-100 d-flex justify-content-between align-items-center" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDetailedResults" aria-expanded="true" aria-controls="collapseDetailedResults">
@@ -347,7 +426,7 @@
                             </div>
                             <div class="collapse show" id="collapseDetailedResults">
                                 <div class="card-body">
-                                    <p class="card-text text-body-secondary">Click on table headers to sort. On smaller screens, this table may scroll horizontally. Questions you marked for review are highlighted.</p>
+                                    <p class="card-text text-body-secondary">Click on table headers to sort. Questions you marked for review are highlighted.</p>
                                     <div class="table-responsive">
                                         <table id="detailed-results-table" class="table table-hover align-middle">
                                             <thead class="table-light">
@@ -356,6 +435,7 @@
                                                     <th><button class="btn-sort" data-sort="selectedAnswer">Your Ans</button></th>
                                                     <th><button class="btn-sort" data-sort="correctAnswer">Correct Ans</button></th>
                                                     <th><button class="btn-sort" data-sort="timeSpent">Time Spent</button></th>
+                                                    <th><button class="btn-sort" data-sort="paceDeviation">Pace +/-</button></th>
                                                     <th><button class="btn-sort" data-sort="outcome">Outcome</button></th>
                                                     <th><button class="btn-sort" data-sort="markedForReview">Marked</button></th>
                                                 </tr>
@@ -410,7 +490,7 @@
         const pauseBtn = document.getElementById('pause-btn');
         const pauseOverlayEl = document.getElementById('pause-overlay');
         const resumePausedBtn = document.getElementById('resume-paused-btn');
-        // --- NEW: Confirmation Modal Elements ---
+        // --- Confirmation Modal Elements ---
         const confirmationModalEl = document.getElementById('confirmation-modal');
         const confirmTitleEl = document.getElementById('confirm-title');
         const confirmMessageEl = document.getElementById('confirm-message');
@@ -420,7 +500,7 @@
 
         // --- Centralized constants ---
         const CONSTANTS = {
-            LOCAL_STORAGE_KEY: 'examPacingToolState_v2',
+            LOCAL_STORAGE_KEY: 'examPacingToolState_v3', // Updated version
             STATUS_UNSEEN: 'unseen',
             STATUS_SEEN: 'seen',
             OUTCOME_CORRECT: 'correct',
@@ -437,7 +517,8 @@
         const getInitialState = () => ({
             examData: [], currentQuestionIndex: 0, markedCount: 0, examStartTime: null,
             questionStartTime: null, timers: { master: null, pacing: null, question: null },
-            sortState: { key: 'id', direction: 'asc' }, charts: {},
+            sortState: { key: 'id', direction: 'asc' }, 
+            charts: { score: null, pace: null, timeBank: null },
             isPaused: false, pauseStartTime: null,
         });
         
@@ -469,7 +550,7 @@
             state.timers = { master: null, pacing: null, question: null };
         };
 
-        // --- NEW: Custom Confirmation Modal ---
+        // --- Custom Confirmation Modal ---
         const showConfirmation = (config) => {
             const {
                 title = 'Confirmation',
@@ -485,21 +566,15 @@
             confirmActionBtn.textContent = confirmText;
             confirmCancelBtn.textContent = cancelText;
 
-            confirmActionBtn.className = 'btn w-100'; // Reset classes but keep w-100
+            confirmActionBtn.className = 'btn w-100'; // Reset classes
             confirmActionBtn.classList.add(confirmClass);
             
             confirmationModalEl.classList.remove('d-none');
             
             const hideModal = () => confirmationModalEl.classList.add('d-none');
 
-            // Use { once: true } to automatically remove listeners after one click
-            const handleConfirm = () => {
-                hideModal();
-                onConfirm();
-            };
-            const handleCancel = () => {
-                hideModal();
-            };
+            const handleConfirm = () => { hideModal(); onConfirm(); };
+            const handleCancel = () => { hideModal(); };
             
             confirmActionBtn.addEventListener('click', handleConfirm, { once: true });
             confirmCancelBtn.addEventListener('click', handleCancel, { once: true });
@@ -598,6 +673,7 @@
                 id: i + 1, timeSpent: 0, markedForReview: false, status: CONSTANTS.STATUS_UNSEEN,
                 outcome: null, selectedAnswer: null,
                 correctAnswer: config.answerKey[i] || null,
+                timeBankAtCompletion: null, 
             }));
             state.examStartTime = Date.now();
             
@@ -681,7 +757,12 @@
             if (index < 0 || index >= config.totalQuestions) return;
             const timeNow = Date.now();
             if (state.questionStartTime && !isResuming) {
-                state.examData[state.currentQuestionIndex].timeSpent += (timeNow - state.questionStartTime) / 1000;
+                const timeSpentOnCurrent = (timeNow - state.questionStartTime) / 1000;
+                state.examData[state.currentQuestionIndex].timeSpent += timeSpentOnCurrent;
+
+                const timeElapsed = (timeNow - state.examStartTime) / 1000;
+                const requiredTimeForProgress = config.requiredPaceSeconds * (state.currentQuestionIndex + 1);
+                state.examData[state.currentQuestionIndex].timeBankAtCompletion = requiredTimeForProgress - timeElapsed;
             }
             clearInterval(state.timers.question);
             state.currentQuestionIndex = index;
@@ -739,9 +820,18 @@
                 alert("Time's up! The exam has ended automatically.");
             }
             clearAllTimers();
+            
             if (state.questionStartTime) {
-                state.examData[state.currentQuestionIndex].timeSpent += (Date.now() - state.questionStartTime) / 1000;
+                const timeNow = Date.now();
+                const timeSpentOnCurrent = (timeNow - state.questionStartTime) / 1000;
+                const currentQ = state.examData[state.currentQuestionIndex];
+                currentQ.timeSpent += timeSpentOnCurrent;
+
+                const timeElapsed = (timeNow - state.examStartTime) / 1000;
+                const requiredTimeForProgress = config.requiredPaceSeconds * (currentQ.id);
+                currentQ.timeBankAtCompletion = requiredTimeForProgress - timeElapsed;
             }
+
             clearStateFromLocalStorage();
             const allAttemptedHaveKey = state.examData
                 .filter(q => q.status !== CONSTANTS.STATUS_UNSEEN && q.selectedAnswer !== null)
@@ -764,35 +854,19 @@
                 item.className = 'list-group-item d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2';
                 
                 if (q.status === CONSTANTS.STATUS_UNSEEN || q.selectedAnswer === null) {
-                    const infoDiv = document.createElement('div');
-                    infoDiv.className = 'd-flex align-items-center gap-3';
-                    infoDiv.innerHTML = `<span>Question ${q.id}</span> <strong class="text-body-secondary">Unattempted</strong>`;
-                    item.appendChild(infoDiv);
+                    item.innerHTML = `<div class="d-flex align-items-center gap-3"><span>Question ${q.id}</span> <strong class="text-body-secondary">Unattempted</strong></div>`;
                 } else {
-                    const infoDiv = document.createElement('div');
-                    infoDiv.className = 'd-flex align-items-center flex-wrap gap-3';
-                    infoDiv.innerHTML = `<span class="fw-bold">Q ${q.id}</span> <span>Your Ans: <strong>${q.selectedAnswer.toUpperCase()}</strong></span> <span class="text-body-secondary small">(Time: ${formatTime(q.timeSpent)})</span>`;
-                    
-                    const actionsDiv = document.createElement('div');
-                    actionsDiv.className = 'actions d-flex align-items-center gap-2 mt-2 mt-sm-0';
-                    actionsDiv.innerHTML = `<span class="me-2">Correct:</span>`;
-
-                    const btnGroup = document.createElement('div');
-                    btnGroup.className = 'btn-group';
-                    btnGroup.setAttribute('role', 'group');
-
-                    ['a', 'b', 'c', 'd'].forEach(ans => {
-                        const btn = document.createElement('button');
-                        btn.className = 'btn btn-sm btn-outline-secondary';
-                        btn.dataset.answer = ans;
-                        btn.dataset.index = index;
-                        btn.textContent = ans.toUpperCase();
-                        btnGroup.appendChild(btn);
-                    });
-
-                    actionsDiv.appendChild(btnGroup);
-                    item.appendChild(infoDiv);
-                    item.appendChild(actionsDiv);
+                    item.innerHTML = `<div class="d-flex align-items-center flex-wrap gap-3">
+                                          <span class="fw-bold">Q ${q.id}</span> 
+                                          <span>Your Ans: <strong>${q.selectedAnswer.toUpperCase()}</strong></span> 
+                                          <span class="text-body-secondary small">(Time: ${formatTime(q.timeSpent)})</span>
+                                      </div>
+                                      <div class="actions d-flex align-items-center gap-2 mt-2 mt-sm-0">
+                                          <span class="me-2">Correct:</span>
+                                          <div class="btn-group" role="group">
+                                              ${['a','b','c','d'].map(ans => `<button class="btn btn-sm btn-outline-secondary" data-answer="${ans}" data-index="${index}">${ans.toUpperCase()}</button>`).join('')}
+                                          </div>
+                                      </div>`;
                 }
                 gradingListEl.appendChild(item);
             });
@@ -818,34 +892,47 @@
         // --- Analytics Logic ---
         function destroyCharts() {
             Object.values(state.charts).forEach(chart => { if (chart instanceof Chart) chart.destroy(); });
-            state.charts = {};
+            state.charts = { score: null, pace: null, timeBank: null };
         }
+        
         function generateAndShowAnalytics() {
             destroyCharts();
             state.examData.forEach(q => {
                 if (q.selectedAnswer !== null) {
                     q.outcome = q.selectedAnswer === q.correctAnswer ? CONSTANTS.OUTCOME_CORRECT : CONSTANTS.OUTCOME_INCORRECT;
-                } else { q.outcome = CONSTANTS.OUTCOME_UNATTEMPTED; }
+                    q.paceDeviation = q.timeSpent - config.requiredPaceSeconds;
+                } else { 
+                    q.outcome = CONSTANTS.OUTCOME_UNATTEMPTED;
+                    q.paceDeviation = null;
+                }
             });
+
             const correctQs = state.examData.filter(q => q.outcome === CONSTANTS.OUTCOME_CORRECT);
             const incorrectQs = state.examData.filter(q => q.outcome === CONSTANTS.OUTCOME_INCORRECT);
             const attemptedQs = state.examData.filter(q => q.outcome !== CONSTANTS.OUTCOME_UNATTEMPTED);
             
             let totalScore = (correctQs.length * config.positiveMarking) - (incorrectQs.length * config.negativeMarking);
-            const maxScore = config.totalQuestions * config.positiveMarking;
             const accuracy = attemptedQs.length > 0 ? (correctQs.length / attemptedQs.length) * 100 : 0;
-            document.getElementById('summary-score').innerHTML = `<strong>Final Score:</strong> ${totalScore.toFixed(2)} / ${maxScore.toFixed(2)} (<span class="${accuracy >= 50 ? 'text-success' : 'text-danger'}">${accuracy.toFixed(1)}% Accuracy</span>)`;
-            
-            const timeOnIncorrect = incorrectQs.reduce((s, q) => s + q.timeSpent, 0);
-            const totalTimeTaken = attemptedQs.reduce((sum, q) => sum + q.timeSpent, 0);
-            const timeOnIncorrectPercentage = totalTimeTaken > 0 ? (timeOnIncorrect / totalTimeTaken) * 100 : 0;
-            document.getElementById('efficiency-analysis').innerHTML = `You spent <strong>${formatTime(timeOnIncorrect)}</strong> (<span class="text-danger">${timeOnIncorrectPercentage.toFixed(1)}%</span> of your time) on questions you answered incorrectly.`;
+            const paceCorrect = correctQs.length > 0 ? correctQs.reduce((s, q) => s + q.timeSpent, 0) / correctQs.length : 0;
+            const paceIncorrect = incorrectQs.length > 0 ? incorrectQs.reduce((s, q) => s + q.timeSpent, 0) / incorrectQs.length : 0;
+            const timeSinks = state.examData.filter(q => q.timeSpent > (config.requiredPaceSeconds * 2) && q.outcome === 'incorrect').length;
+
+            document.getElementById('stat-score').textContent = totalScore.toFixed(2);
+            document.getElementById('stat-accuracy').textContent = `${accuracy.toFixed(1)}%`;
+            document.getElementById('stat-pace-correct').textContent = formatTime(paceCorrect);
+            document.getElementById('stat-pace-incorrect').textContent = formatTime(paceIncorrect);
+            document.getElementById('stat-answered').textContent = `${attemptedQs.length}/${config.totalQuestions}`;
+            document.getElementById('stat-time-sinks').textContent = timeSinks;
             
             renderScoreDonutChart(correctQs, incorrectQs, attemptedQs);
-            renderPaceBarChart(correctQs, incorrectQs);
+            renderPacingScatterPlot();
+            renderTimeBankChart();
+            generateStrategicInsights(correctQs, incorrectQs, totalScore);
             renderDetailedTable();
         }
+
         function getBsColor(colorName) { return getComputedStyle(document.documentElement).getPropertyValue(`--bs-${colorName}`).trim(); }
+        
         function renderScoreDonutChart(correctQs, incorrectQs, attemptedQs) {
             const ctx = document.getElementById('score-chart').getContext('2d');
             const unattemptedCount = config.totalQuestions - attemptedQs.length;
@@ -860,34 +947,203 @@
                 }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: getBsColor('body-color'), boxWidth: 12, padding: 20 } } } }
             });
         }
-        function renderPaceBarChart(correctQs, incorrectQs) {
-            const ctx = document.getElementById('pace-chart').getContext('2d');
-            const paceCorrect = correctQs.length > 0 ? correctQs.reduce((s, q) => s + q.timeSpent, 0) / correctQs.length : 0;
-            const paceIncorrect = incorrectQs.length > 0 ? incorrectQs.reduce((s, q) => s + q.timeSpent, 0) / incorrectQs.length : 0;
+
+        function renderPacingScatterPlot() {
+            const ctx = document.getElementById('pace-scatter-chart').getContext('2d');
+            const correctData = state.examData.filter(q => q.outcome === 'correct').map(q => ({ x: q.id, y: q.timeSpent }));
+            const incorrectData = state.examData.filter(q => q.outcome === 'incorrect').map(q => ({ x: q.id, y: q.timeSpent }));
+
             state.charts.pace = new Chart(ctx, {
-                type: 'bar', data: {
-                    labels: ['Pace on Correct Qs', 'Pace on Incorrect Qs'],
+                type: 'scatter',
+                data: {
                     datasets: [{
-                        label: 'Your Pace', data: [paceCorrect, paceIncorrect],
-                        backgroundColor: [getBsColor('success-bg-subtle'), getBsColor('danger-bg-subtle')],
-                        borderColor: [getBsColor('success'), getBsColor('danger')], borderWidth: 1.5
+                        label: 'Correct', data: correctData,
+                        backgroundColor: getBsColor('success-bg-subtle'), borderColor: getBsColor('success'), borderWidth: 1.5, radius: 5, hoverRadius: 7,
                     }, {
-                        type: 'line', label: 'Required Pace', data: [config.requiredPaceSeconds, config.requiredPaceSeconds],
-                        borderColor: getBsColor('warning'), borderWidth: 3, pointRadius: 0, fill: false, borderDash: [5, 5]
+                        label: 'Incorrect', data: incorrectData,
+                        backgroundColor: getBsColor('danger-bg-subtle'), borderColor: getBsColor('danger'), borderWidth: 1.5, radius: 5, hoverRadius: 7,
                     }]
-                }, options: { responsive: true, maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Time in Seconds', color: getBsColor('secondary-color') }, ticks: { color: getBsColor('secondary-color') } }, x: { ticks: { color: getBsColor('secondary-color') } } },
-                    plugins: { legend: { position: 'bottom', labels: { color: getBsColor('body-color'), boxWidth: 12, padding: 20 } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${formatTime(c.raw)}` } } }
+                },
+                options: { responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Time Spent (seconds)', color: getBsColor('secondary-color') } },
+                        x: { 
+                            type: 'linear', 
+                            title: { display: true, text: 'Question Number', color: getBsColor('secondary-color') },
+                            ticks: {
+                                callback: function(value, index, ticks) {
+                                    if (Math.floor(value) === value) { return value; }
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: getBsColor('body-color') } },
+                        tooltip: { callbacks: { label: c => [`Q${c.raw.x}: ${c.dataset.label}`, `Time: ${formatTime(c.raw.y)}`] }},
+                        annotation: {
+                            annotations: {
+                                requiredPaceLine: {
+                                    type: 'line', yMin: config.requiredPaceSeconds, yMax: config.requiredPaceSeconds,
+                                    borderColor: getBsColor('warning'), borderWidth: 2, borderDash: [6, 6],
+                                    label: { content: 'Required Pace', display: true, position: 'end', backgroundColor: 'rgba(0,0,0,0.6)' }
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
+
+        // --- NEW & IMPROVED: This is the updated Time Bank Chart function ---
+        function renderTimeBankChart() {
+            const ctx = document.getElementById('time-bank-chart').getContext('2d');
+            
+            // 1. Get only the questions that were actually answered and have trajectory data.
+            const answeredQuestions = state.examData.filter(q => q.timeBankAtCompletion !== null);
+
+            // If no questions were answered, show a message.
+            if (answeredQuestions.length === 0) {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.font = "16px sans-serif";
+                ctx.fillStyle = getBsColor('secondary-color');
+                ctx.textAlign = "center";
+                ctx.fillText("No attempted questions to analyze.", ctx.canvas.width / 2, ctx.canvas.height / 2);
+                return;
+            }
+
+            // 2. Create the chart data based on the SEQUENCE of answers, not the question ID.
+            const chartData = answeredQuestions.map((q, index) => ({
+                x: index + 1, // X is now the sequence (1st, 2nd, 3rd answered question)
+                y: q.timeBankAtCompletion,
+                originalId: q.id // Store the original ID for the tooltip
+            }));
+            
+            // Add a starting point at (0, 0) for a clean origin.
+            chartData.unshift({x: 0, y: 0, originalId: 0});
+            
+            // 3. Create a dynamic annotation for the final time bank value.
+            const lastDataPoint = chartData[chartData.length - 1];
+            const finalTimeBankLabel = {
+                type: 'label',
+                xValue: lastDataPoint.x,
+                yValue: lastDataPoint.y,
+                content: [`Final Bank: ${Math.round(lastDataPoint.y)}s`],
+                font: { size: 14, weight: 'bold' },
+                color: lastDataPoint.y >= 0 ? getBsColor('success') : getBsColor('danger'),
+                backgroundColor: getBsColor('body-bg'),
+                padding: 6,
+                borderRadius: 4,
+                yAdjust: -20, // Position it slightly above the point
+            };
+
+            state.charts.timeBank = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Time Bank (seconds)',
+                        data: chartData,
+                        borderColor: getBsColor('primary'),
+                        backgroundColor: getBsColor('primary-bg-subtle'),
+                        fill: { target: 'origin', above: getBsColor('success-bg-subtle'), below: getBsColor('danger-bg-subtle') },
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 7,
+                        borderWidth: 2.5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: { display: true, text: 'Sequence of Questions Answered' },
+                            min: 0,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        },
+                        y: {
+                            title: { display: true, text: 'Time Bank (s)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        // 4. Create a more informative tooltip.
+                        tooltip: {
+                            callbacks: {
+                                title: (context) => {
+                                    const dataPoint = context[0].raw;
+                                    if (dataPoint.x === 0) return 'Start of Exam';
+                                    return `Answered #${dataPoint.x} (Question ${dataPoint.originalId})`;
+                                },
+                                label: (context) => {
+                                    const timeBank = context.raw.y;
+                                    return `Time Bank: ${timeBank.toFixed(1)}s`;
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: {
+                                zeroLine: { type: 'line', yMin: 0, yMax: 0, borderColor: getBsColor('secondary'), borderWidth: 2, borderDash: [2, 2] },
+                                finalTimeBankLabel
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function generateStrategicInsights(correctQs, incorrectQs, originalScore) {
+            const listEl = document.getElementById('strategic-insights-list');
+            listEl.innerHTML = '';
+            
+            const pointsLostToIncorrect = incorrectQs.length * config.negativeMarking;
+            const pointsNotGained = incorrectQs.length * config.positiveMarking;
+            const totalSwing = pointsLostToIncorrect + pointsNotGained;
+
+            listEl.innerHTML += `<li class="mb-3">
+                <strong class="d-block text-danger">Cost of Mistakes</strong>
+                Your ${incorrectQs.length} incorrect answers cost you a total of <strong>${totalSwing.toFixed(2)} points</strong> versus getting them correct.
+            </li>`;
+
+            if (incorrectQs.length > 0) {
+                const scoreWithoutGuessing = (correctQs.length * config.positiveMarking);
+                let text = `If you had left your ${incorrectQs.length} incorrect questions unanswered, your score would have been <strong>${scoreWithoutGuessing.toFixed(2)}</strong>.`;
+                if (scoreWithoutGuessing > originalScore) {
+                    text += ` This is <span class="text-success">${(scoreWithoutGuessing - originalScore).toFixed(2)} points higher</span>. Your guessing strategy was not effective.`;
+                } else {
+                    text += ` This is <span class="text-danger">${(originalScore - scoreWithoutGuessing).toFixed(2)} points lower</span>. Your aggressive guessing paid off.`;
+                }
+                listEl.innerHTML += `<li class="mb-3"><strong class="d-block text-primary">"No Guessing" Scenario</strong>${text}</li>`;
+            }
+
+            const timeSinks = state.examData.filter(q => q.outcome === 'incorrect' && q.timeSpent > (config.requiredPaceSeconds * 1.5));
+            if (timeSinks.length > 0) {
+                const timeWasted = timeSinks.reduce((sum, q) => sum + q.timeSpent, 0);
+                listEl.innerHTML += `<li class="mb-3"><strong class="d-block text-warning">Time Sink Alert</strong>You spent over 1.5x the average pace on <strong>${timeSinks.length} questions</strong> that you got wrong, costing you <strong>${formatTime(timeWasted)}</strong>.</li>`;
+            }
+        }
+        
         function renderDetailedTable() {
             detailedResultsTbody.innerHTML = '';
             const sortedData = [...state.examData].sort((a, b) => {
-                const valA = a[state.sortState.key], valB = b[state.sortState.key];
+                let valA = a[state.sortState.key];
+                let valB = b[state.sortState.key];
+                
+                if (state.sortState.key === 'paceDeviation') {
+                    valA = valA ?? -Infinity;
+                    valB = valB ?? -Infinity;
+                }
+
                 let comparison = 0;
-                if (state.sortState.key === 'markedForReview') comparison = valA === valB ? 0 : valA ? -1 : 1;
-                else if (valA > valB) comparison = 1; else if (valA < valB) comparison = -1;
+                if (state.sortState.key === 'markedForReview') {
+                    comparison = valA === valB ? 0 : valA ? -1 : 1;
+                } else if (valA > valB) {
+                    comparison = 1; 
+                } else if (valA < valB) {
+                    comparison = -1;
+                }
                 return state.sortState.direction === 'asc' ? comparison : comparison * -1;
             });
             
@@ -898,7 +1154,21 @@
                 if (q.markedForReview) row.classList.add('table-warning');
                 const userAnswer = q.selectedAnswer ? q.selectedAnswer.toUpperCase() : '-';
                 const correctAnswer = q.correctAnswer ? q.correctAnswer.toUpperCase() : '-';
-                row.innerHTML = `<td>${q.id}</td><td>${userAnswer}</td><td>${correctAnswer}</td><td>${q.outcome === CONSTANTS.OUTCOME_UNATTEMPTED ? '-' : formatTime(q.timeSpent)}</td><td><span class="badge rounded-pill text-bg-${outcomeColors[q.outcome]} text-capitalize">${q.outcome}</span></td><td>${q.markedForReview ? 'Yes' : 'No'}</td>`;
+
+                let deviationHtml = '-';
+                if (q.paceDeviation !== null) {
+                    const color = q.paceDeviation > 0 ? 'text-danger' : 'text-success';
+                    const sign = q.paceDeviation > 0 ? '+' : '';
+                    deviationHtml = `<span class="${color}">${sign}${Math.round(q.paceDeviation)}s</span>`;
+                }
+
+                row.innerHTML = `<td>${q.id}</td>
+                                 <td>${userAnswer}</td>
+                                 <td>${correctAnswer}</td>
+                                 <td>${q.outcome === CONSTANTS.OUTCOME_UNATTEMPTED ? '-' : formatTime(q.timeSpent)}</td>
+                                 <td>${deviationHtml}</td>
+                                 <td><span class="badge rounded-pill text-bg-${outcomeColors[q.outcome]} text-capitalize">${q.outcome}</span></td>
+                                 <td>${q.markedForReview ? 'Yes' : 'No'}</td>`;
             });
             detailedResultsTbody.appendChild(fragment);
 
@@ -909,15 +1179,18 @@
                 }
             });
         }
+
         function handleSortClick(e) {
             const key = e.currentTarget.dataset.sort;
-            if (state.sortState.key === key) state.sortState.direction = state.sortState.direction === 'asc' ? 'desc' : 'asc';
-            else {
+            if (state.sortState.key === key) {
+                state.sortState.direction = state.sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
                 state.sortState.key = key;
-                state.sortState.direction = (key === 'id' || key.includes('Answer')) ? 'asc' : 'desc';
+                state.sortState.direction = (key === 'timeSpent' || key === 'paceDeviation') ? 'desc' : 'asc';
             }
             renderDetailedTable();
         }
+
         function resetAndShowSetup() {
             destroyCharts();
             state = getInitialState();
@@ -943,11 +1216,8 @@
         };
         finishBtn.onclick = () => {
             showConfirmation({
-                title: 'Finish Exam?',
-                message: 'Are you sure you want to finish and grade the exam? This cannot be undone.',
-                onConfirm: () => endExam(false),
-                confirmText: 'Finish & Grade',
-                confirmClass: 'btn-danger'
+                title: 'Finish Exam?', message: 'Are you sure you want to finish and grade the exam? This cannot be undone.',
+                onConfirm: () => endExam(false), confirmText: 'Finish & Grade', confirmClass: 'btn-danger'
             });
         };
         gradingListEl.addEventListener('click', handleGradingClick);
@@ -957,17 +1227,13 @@
         };
         startNewBtn.onclick = () => {
             showConfirmation({
-                title: 'Start New Exam?',
-                message: 'This will erase your current report. Are you sure you want to start a new exam?',
-                onConfirm: resetAndShowSetup,
-                confirmText: 'Start New',
-                confirmClass: 'btn-primary'
+                title: 'Start New Exam?', message: 'This will erase your current report. Are you sure you want to start a new exam?',
+                onConfirm: resetAndShowSetup, confirmText: 'Start New', confirmClass: 'btn-primary'
             });
         };
         document.querySelectorAll('#detailed-results-table .btn-sort').forEach(th => th.addEventListener('click', handleSortClick));
         pauseBtn.addEventListener('click', pauseExam);
         resumePausedBtn.addEventListener('click', resumeFromPause);
-
 
         // --- Initializer ---
         function init() {
