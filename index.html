@@ -750,8 +750,13 @@
             if (paceRatio > 1.1) pacingBarInnerEl.classList.add('bg-success');
             else if (paceRatio >= 0.9) pacingBarInnerEl.classList.add('bg-warning');
             else pacingBarInnerEl.classList.add('bg-danger');
-            const requiredTimeForProgress = config.requiredPaceSeconds * (state.currentQuestionIndex + 1);
+            
+            // *** TIME BANK FIX ***
+            // The time bank should be based on the number of unique questions seen (our progress),
+            // not the index of the current question, to handle non-linear navigation correctly.
+            const requiredTimeForProgress = config.requiredPaceSeconds * questionsSeen;
             const timeBankSeconds = requiredTimeForProgress - timeElapsed;
+
             timeBankEl.textContent = (timeBankSeconds >= 0 ? '+' : '') + formatTime(timeBankSeconds);
             timeBankEl.classList.toggle('text-success', timeBankSeconds >= 0);
             timeBankEl.classList.toggle('text-danger', timeBankSeconds < 0);
@@ -794,7 +799,12 @@
                 state.examData[state.currentQuestionIndex].timeSpent += timeSpentOnCurrent;
 
                 const timeElapsed = (timeNow - state.examStartTime) / 1000;
-                const requiredTimeForProgress = config.requiredPaceSeconds * (state.currentQuestionIndex + 1);
+
+                // *** TIME BANK FIX ***
+                // Calculate historical time bank based on the number of questions seen at that point.
+                // This calculation happens BEFORE the new question's status is flipped.
+                const questionsSeenCount = state.examData.filter(q => q.status !== CONSTANTS.STATUS_UNSEEN).length;
+                const requiredTimeForProgress = config.requiredPaceSeconds * questionsSeenCount;
                 state.examData[state.currentQuestionIndex].timeBankAtCompletion = requiredTimeForProgress - timeElapsed;
             }
             clearInterval(state.timers.question);
@@ -861,7 +871,11 @@
                 currentQ.timeSpent += timeSpentOnCurrent;
 
                 const timeElapsed = (timeNow - state.examStartTime) / 1000;
-                const requiredTimeForProgress = config.requiredPaceSeconds * (state.currentQuestionIndex + 1);
+                
+                // *** TIME BANK FIX ***
+                // Calculate the final time bank data point for the last question.
+                const questionsSeenCount = state.examData.filter(q => q.status !== CONSTANTS.STATUS_UNSEEN).length;
+                const requiredTimeForProgress = config.requiredPaceSeconds * questionsSeenCount;
                 currentQ.timeBankAtCompletion = requiredTimeForProgress - timeElapsed;
             }
 
